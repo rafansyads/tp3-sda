@@ -1,7 +1,12 @@
-import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -17,6 +22,7 @@ public class WarungIkanMagetanMap {
   private static int totalRoads; // might change
   private static int totalPass; // might change
   private static int[] passCities;
+  private static int currPass;
 
   /**
    * Main method goes here: construct all the objects and call the necessary methods
@@ -48,6 +54,7 @@ public class WarungIkanMagetanMap {
     for (int i = 0; i < totalPass; i++) {
       passCities[i] = in.nextInteger();
     }
+    currPass = 0;
 
     // Input the activities queries
     int totalQueries = in.nextInteger();
@@ -90,12 +97,17 @@ public class WarungIkanMagetanMap {
           break;
         }
         out.flush();
+        graphMap.resetDistances();
+
+        // DEBUG mode
+        // out.println(graphMap.getSofita());
       }
     out.close();
   }
 
   public static int methodR(int energy) {
-    return 0;
+    return graphMap.energyRangeBoundedwBFS(graphMap.getSofita(), energy);
+    // return 0;
   }
 
   public static long methodF(int cityId) {
@@ -106,14 +118,16 @@ public class WarungIkanMagetanMap {
   }
 
   public static int methodM(int cityId, int pass) {
+    graphMap.setSofita(graphMap.cities.get(cityId - 1));
     return 0;
   }
 
   public static long methodJ(int cityId) {
-    return 0;
+    return graphMap.modifiedPrimMST(graphMap.cities.get(cityId - 1));
+    // return 0;
   }
 
-  static class EdgeRoad {
+  static class EdgeRoad implements Comparable<EdgeRoad> {
     private VertexCity cityA;
     private VertexCity cityB;
     private int distance;
@@ -136,9 +150,15 @@ public class WarungIkanMagetanMap {
       return distance;
     }
 
+
     @Override
     public String toString() {
       return "City " + cityA.id + " to City " + cityB.id + " with distance " + distance;
+    }
+
+    @Override
+    public int compareTo(EdgeRoad o) {
+      return Integer.compare(this.distance, o.distance);
     }
   }
 
@@ -201,6 +221,10 @@ public class WarungIkanMagetanMap {
       return this.sofita;
     }
 
+    public void setSofita(VertexCity sofita) {
+      this.sofita = sofita;
+    }
+
     public void addRoad(int A, int B, int dist) {
       VertexCity cityA = cities.get(A - 1);
       VertexCity cityB = cities.get(B - 1);
@@ -219,6 +243,39 @@ public class WarungIkanMagetanMap {
           out.flush();
         }
       }
+    }
+
+    void resetDistances() {
+      for (VertexCity city : cities) {
+        city.setDistance(0);
+      }
+    }
+
+    public int energyRangeBoundedwBFS(VertexCity start, int energy) {
+      final Queue<VertexCity> queue = new LinkedList<>();
+      final Map<VertexCity, Integer> visited = new HashMap<>();
+      int result = 0;
+
+      queue.add(start);
+      visited.put(start, 0);
+
+      while (!queue.isEmpty()) {
+        VertexCity city = queue.poll();
+        int energyLeft = energy - visited.get(city);
+        if (energyLeft < 0) continue;
+
+        for (EdgeRoad road : city.getRoads()) {
+          VertexCity nextCity = road.getCityB();
+          if ((!visited.containsKey(nextCity) && road.getDistance() <= energy)) {
+            visited.put(nextCity, energy);
+            queue.add(nextCity);
+            result++;
+          }
+        }
+      }
+      
+      if (result == 0) return -1;
+      return result;
     }
     
     public long dijkstra(VertexCity start, VertexCity end) {
@@ -247,6 +304,61 @@ public class WarungIkanMagetanMap {
       }
 
       return end.getDistance();
+    }
+
+    // This method is already done (properly implemented and working)
+    /**
+     * Modified Prim's Algorithm using Fibonacci Heap. This method is used to find the minimum spanning tree
+     * of the graph. The algorithm is modified to start from a specific vertex and return the total weight of the
+     * minimum spanning tree while also include all the graph from the starting vertex.
+     * @param start
+     * @return result of modified (start from a specific vertex) minimum spanning tree: long
+     */
+    public long modifiedPrimMST(VertexCity start) {
+      long result = 0;
+
+      FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
+      boolean[] visited = new boolean[cities.size()+1];
+      visited[start.getId()] = true;
+      Map<VertexCity, FibonacciHeap.Entry<VertexCity>> map = new HashMap<>();
+
+      for (EdgeRoad road : start.getRoads()) {
+        result += road.getDistance();
+        visited[road.getCityB().getId()] = true;
+      }
+
+      for (int i = 1; i <= cities.size(); i++) {
+        if (visited[i]) {
+          for (EdgeRoad road : cities.get(i-1).getRoads()) {
+            if (!visited[road.getCityB().getId()]) {
+              map.put(road.getCityB(), heap.insert(road.getCityB(), road.getDistance()));
+            }
+          }
+        }
+      }
+
+      while (!heap.isEmpty()) {
+        FibonacciHeap.Entry<VertexCity> temp = heap.deleteMin();
+        VertexCity city = temp.getValue();
+        double distance = temp.getPriority();
+        if (!visited[city.getId()]) {
+          visited[city.getId()] = true;
+          result += distance;
+          
+          for (EdgeRoad road : city.getRoads()) {
+            if (!visited[road.getCityB().getId()]) {
+              long newDistance = road.getDistance();
+              if (map.containsKey(road.getCityB()) && newDistance < map.get(road.getCityB()).getPriority()) {
+                heap.decreaseKey(map.get(road.getCityB()), newDistance);
+              } else {
+                map.put(road.getCityB(), heap.insert(road.getCityB(), newDistance));
+              }
+            }
+          }
+        }
+      }
+
+      return result;
     }
 
     /**
