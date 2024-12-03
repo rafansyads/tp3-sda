@@ -1,10 +1,13 @@
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.io.IOException;
 import java.io.InputStream;
@@ -80,7 +83,7 @@ public class WarungIkanMagetanMap {
           break;
           case 'M':
           /*
-          * TODO: Sofita will go to the city with the entried id and solve the password
+          * Sofita will go to the city with the entried id and solve the password
           * if the password is solved, Sofita will go to the entried city
           * returns the minimum combinations of passCities that Sofita has solved
           * else returns -1
@@ -121,9 +124,14 @@ public class WarungIkanMagetanMap {
     return findMinSteps(currPass, pass); 
   }
 
+  /**
+   * Method J: Modified Prim's Algorithm | Minimum Spanning Tree
+   * >> For more information, check WarungIkanMagetanMap$GraphMap#modifiedPrimMST method
+   * @param cityId
+   * @return
+   */
   public static long methodJ(int cityId) {
     return graphMap.modifiedPrimMST(graphMap.cities.get(cityId - 1));
-    // return 0;
   }
 
   private static int combineNumbers(int num1, int num2) {
@@ -151,6 +159,7 @@ public class WarungIkanMagetanMap {
   }
 
   public static int findMinSteps(int currentPassword, int targetPassword) {
+      if (currentPassword == targetPassword) return 0;
       Set<Integer> visited = new HashSet<>();
       Queue<int[]> queue = new LinkedList<>();
       queue.add(new int[]{currentPassword, 0});
@@ -327,23 +336,156 @@ public class WarungIkanMagetanMap {
       if (result == 0) return -1;
       return result;
     }
+
+  //   public int energyRangeBoundedwBFS(VertexCity start, int energy) {
+  //     int maxEdgeWeight = 100; // Maximum possible edge weight
+  //     int n = cities.size(); // Total number of cities
+  
+  //     // Adjust array sizes to accommodate IDs starting from 1
+  //     int[] distances = new int[n + 1]; // IDs range from 1 to N
+  //     Arrays.fill(distances, Integer.MAX_VALUE);
+  //     distances[start.id] = 0; // Use start.id directly
+  
+  //     // Buckets for Dial's algorithm
+  //     @SuppressWarnings("unchecked")
+  //     LinkedList<VertexCity>[] buckets = new LinkedList[maxEdgeWeight * n + 1];
+  //     for (int i = 0; i < buckets.length; i++) {
+  //         buckets[i] = new LinkedList<>();
+  //     }
+  //     buckets[0].add(start);
+  
+  //     int idx = 0; // Current index in buckets
+  //     int maxDistance = maxEdgeWeight * n; // Maximum possible cumulative distance
+  
+  //     while (idx <= maxDistance) {
+  //         while (!buckets[idx].isEmpty()) {
+  //             VertexCity city = buckets[idx].poll();
+  
+  //             if (distances[city.id] < idx) {
+  //                 continue;
+  //             }
+  
+  //             for (EdgeRoad road : city.getRoads()) {
+  //                 VertexCity nextCity = road.getCityB();
+  //                 int weight = road.getDistance();
+  
+  //                 // Edge weight must not exceed energy limit
+  //                 if (weight > energy) {
+  //                     continue;
+  //                 }
+  
+  //                 int newDist = distances[city.id] + weight;
+  
+  //                 if (newDist < distances[nextCity.id]) {
+  //                     distances[nextCity.id] = newDist;
+  //                     int bucketIdx = newDist;
+  //                     buckets[bucketIdx].add(nextCity);
+  //                 }
+  //             }
+  //         }
+  //         idx++;
+  //     }
+  
+  //     // Count reachable cities excluding the starting city
+  //     int count = 0;
+  //     for (int i = 1; i <= n; i++) {
+  //         if (i != start.id && distances[i] != Integer.MAX_VALUE) {
+  //             count++;
+  //         }
+  //     }
+  
+  //     return count == 0 ? -1 : count;
+  // }
+
+    // public int energyRangeBoundedwBFS(VertexCity start, int energy) {
+    //   final Map<VertexCity, Double> visited = new HashMap<>();
+    //   final FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
+    //   final Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
+    //   int result = 0;
+  
+    //   FibonacciHeap.Entry<VertexCity> startEntry = heap.insert(start, -energy);
+    //   entries.put(start, startEntry);
+    //   visited.put(start, (double) energy);
+  
+    //   while (!heap.isEmpty()) {
+    //     FibonacciHeap.Entry<VertexCity> currentEntry = heap.deleteMin();
+    //     VertexCity city = currentEntry.getValue();
+    //     int energyLeft = energy;
+  
+    //     for (EdgeRoad road : city.getRoads()) {
+    //       VertexCity nextCity = road.getCityB();
+    //       double newEnergyLeft = energyLeft - road.getDistance();
+  
+    //       if (newEnergyLeft >= 0 && (!visited.containsKey(nextCity) || newEnergyLeft > visited.get(nextCity))) {
+    //         visited.put(nextCity, newEnergyLeft);
+    //         if (entries.containsKey(nextCity)) {
+    //           heap.decreaseKey(entries.get(nextCity), -newEnergyLeft);
+    //         } else {
+    //           FibonacciHeap.Entry<VertexCity> entry = heap.insert(nextCity, -newEnergyLeft);
+    //           entries.put(nextCity, entry);
+    //           result++;
+    //         }
+    //       }
+    //     }
+    //   }
+  
+    //   return result == 0 ? -1 : result;
+    // }
     
+    // public long dijkstra(VertexCity start, VertexCity end) {
+    //   FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
+    //   Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
+    //   for (VertexCity city : cities) {
+    //     city.setDistance(Long.MAX_VALUE);
+    //   }
+    //   start.setDistance(0);
+    //   entries.put(start, heap.insert(start, 0));
+
+    //   while (!heap.isEmpty()) {
+    //     VertexCity city = heap.deleteMin().getValue();
+    //     for (EdgeRoad road : city.getRoads()) {
+    //       VertexCity nextCity = road.getCityB();
+    //       long newDistance = city.getDistance() + road.getDistance();
+    //       if (newDistance < nextCity.getDistance()) {
+    //         nextCity.setDistance(newDistance);
+    //         if (entries.containsKey(nextCity)) {
+    //           heap.decreaseKey(entries.get(nextCity), newDistance);
+    //         } else {
+    //           entries.put(nextCity, heap.insert(nextCity, newDistance));
+    //         }
+    //       }
+    //     }
+    //   }
+
+    //   return end.getDistance();
+    // }
+
     public long dijkstra(VertexCity start, VertexCity end) {
       FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
       Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
-      for (VertexCity city : cities) {
-        city.setDistance(Long.MAX_VALUE);
-      }
-      start.setDistance(0);
+      Map<VertexCity, Long> distances = new HashMap<>();
+    
+      // Initialize distance to the start city as 0
+      distances.put(start, 0L);
       entries.put(start, heap.insert(start, 0));
-
+    
       while (!heap.isEmpty()) {
         VertexCity city = heap.deleteMin().getValue();
+        long currentDistance = distances.get(city);
+    
+        // If we have reached the destination, we can break early
+        if (city.equals(end)) {
+          break;
+        }
+    
         for (EdgeRoad road : city.getRoads()) {
           VertexCity nextCity = road.getCityB();
-          long newDistance = city.getDistance() + road.getDistance();
-          if (newDistance < nextCity.getDistance()) {
-            nextCity.setDistance(newDistance);
+          long newDistance = currentDistance + road.getDistance();
+          long existingDistance = distances.getOrDefault(nextCity, Long.MAX_VALUE);
+    
+          if (newDistance < existingDistance) {
+            distances.put(nextCity, newDistance);
+    
             if (entries.containsKey(nextCity)) {
               heap.decreaseKey(entries.get(nextCity), newDistance);
             } else {
@@ -352,8 +494,9 @@ public class WarungIkanMagetanMap {
           }
         }
       }
-
-      return end.getDistance();
+    
+      // Return the shortest distance to the end city
+      return distances.getOrDefault(end, -1L);
     }
 
     // This method is already done (properly implemented and working)
