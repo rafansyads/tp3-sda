@@ -5,7 +5,6 @@ import java.util.Set;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.io.IOException;
 import java.io.InputStream;
@@ -119,12 +118,63 @@ public class WarungIkanMagetanMap {
 
   public static int methodM(int cityId, int pass) {
     graphMap.setSofita(graphMap.cities.get(cityId - 1));
-    return 0;
+    return findMinSteps(currPass, pass); 
   }
 
   public static long methodJ(int cityId) {
     return graphMap.modifiedPrimMST(graphMap.cities.get(cityId - 1));
     // return 0;
+  }
+
+  private static int combineNumbers(int num1, int num2) {
+      int[] digits1 = new int[4];
+      int[] digits2 = new int[4];
+      int[] result = new int[4];
+      
+      for (int i = 3; i >= 0; i--) {
+          digits1[i] = num1 % 10;
+          digits2[i] = num2 % 10;
+          num1 /= 10;
+          num2 /= 10;
+      }
+      
+      for (int i = 0; i < 4; i++) {
+          result[i] = (digits1[i] + digits2[i]) % 10;
+      }
+      
+      int finalResult = 0;
+      for (int i = 0; i < 4; i++) {
+          finalResult = finalResult * 10 + result[i];
+      }
+      
+      return finalResult;
+  }
+
+  public static int findMinSteps(int currentPassword, int targetPassword) {
+      Set<Integer> visited = new HashSet<>();
+      Queue<int[]> queue = new LinkedList<>();
+      queue.add(new int[]{currentPassword, 0});
+      visited.add(currentPassword);
+      
+      while (!queue.isEmpty()) {
+          int[] current = queue.poll();
+          int password = current[0];
+          int steps = current[1];
+          
+          if (password == targetPassword) {
+            currPass = targetPassword;
+            return steps;
+          }
+
+          for (int i = 0; i < passCities.length; i++) {
+              int newPassword2 = combineNumbers(password, passCities[i]);
+              if (!visited.contains(newPassword2)) {
+                  visited.add(newPassword2);
+                  queue.add(new int[]{newPassword2, steps + 1});
+              }
+          }
+      }
+      return -1;
   }
 
   static class EdgeRoad implements Comparable<EdgeRoad> {
@@ -310,9 +360,9 @@ public class WarungIkanMagetanMap {
     /**
      * Modified Prim's Algorithm using Fibonacci Heap. This method is used to find the minimum spanning tree
      * of the graph. The algorithm is modified to start from a specific vertex and return the total weight of the
-     * minimum spanning tree while also include all the graph from the starting vertex.
+     * minimum spanning tree while also including all the graphs from the starting vertex.
      * @param start
-     * @return result of modified (start from a specific vertex) minimum spanning tree: long
+     * @return result of modified (all edges from the starting vertex included) minimum spanning tree: long
      */
     public long modifiedPrimMST(VertexCity start) {
       long result = 0;
@@ -393,6 +443,12 @@ public class WarungIkanMagetanMap {
 
         public double getPriority() {
           return this.priority;
+        }
+
+        public Map<T, Double> getValuePriority() {
+          Map<T, Double> map = new HashMap<>();
+          map.put(this.value, this.priority);
+          return map;
         }
       }
 
@@ -557,6 +613,10 @@ public class WarungIkanMagetanMap {
         else entry.parent.marked = true;
 
         entry.parent = null;
+      }
+
+      public boolean contains(Entry<T> entry) {
+        return entry.prev != null && entry.next != null;
       }
     }
   }
