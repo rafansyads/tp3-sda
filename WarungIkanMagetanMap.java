@@ -25,6 +25,10 @@ public class WarungIkanMagetanMap {
   private static int totalPass; // might change
   private static int[] passCities;
   private static int currPass;
+  private static int maxRoadDist = 0;
+  private static int[] RMemo;
+  private static long[] FMemo;
+  private static VertexCity prevSofita;
 
   /**
    * Main method goes here: construct all the objects and call the necessary methods
@@ -36,6 +40,11 @@ public class WarungIkanMagetanMap {
     totalCities = in.nextInteger();
     totalRoads = in.nextInteger();
 
+    // Initialise the memoization arrays
+    RMemo = new int[101]; // 1 to 100 energy
+    FMemo = new long[totalCities + 1]; // 1 to totalCities
+    RMemo[100] = totalCities - 1;
+
     // Construct the cities / vertices
     graphMap = new GraphMap(totalCities);
 
@@ -45,7 +54,9 @@ public class WarungIkanMagetanMap {
       int B = in.nextInteger();
       int dist = in.nextInteger();
       graphMap.addRoad(A, B, dist);
+      if (dist > maxRoadDist) maxRoadDist = dist;
     }
+    prevSofita = graphMap.getSofita();
 
     // DEBUG: Print the map
     // graphMap.printMap();
@@ -310,21 +321,58 @@ public class WarungIkanMagetanMap {
       }
     }
 
+    // This method is already done (properly implemented and working)
+    /**
+     * Energy Range Bounded with BFS. This method is used to find the total cities that Sofita can possibly go to
+     * within the range of energy. The algorithm is modified to start from a specific vertex and return the total cities
+     * that Sofita can possibly go to within the range of energy. The algorithm is also modified to store the total cities
+     * that Sofita can possibly go to within the range of energy in the RMemo array.
+     * @param start VertexCity
+     * @param energy
+     * @return total cities that Sofita can possibly go to within the range of energy: int
+     */
     public int energyRangeBoundedwBFS(VertexCity start, int energy) {
+
+      // If the energy is greater than or equal to the maximum road distance or 100, return the total cities - 1
+      if (energy >= maxRoadDist || energy >= 100) return cities.size() - 1;
+
+      // If the energy is less than 0, return -1 (the query is actually invalid)
+      else if (energy == 0) return -1;
+
+      // If the total cities that Sofita can possibly go to within the range of energy 
+      // is already calculated, return the total cities
+      else if (RMemo[energy] != 0 && prevSofita == getSofita()) return RMemo[energy];
+
+      // Else if the total cities that Sofita can possibly go to within the range of energy 
+      // is already calculated but the starting city is different
+      else if (RMemo[energy] != 0 && prevSofita != getSofita()) {
+        Arrays.fill(RMemo, 0);
+        prevSofita = getSofita();
+      }
+
+      // Initialise the BFS queue, visited map, and the result
       final Queue<VertexCity> queue = new LinkedList<>();
       final Map<VertexCity, Integer> visited = new HashMap<>();
       int result = 0;
 
+      // Add the starting city to the BFS queue and mark the city as visited
       queue.add(start);
       visited.put(start, 0);
 
+      // While the BFS queue is not empty, delete and extract the city and its energy
       while (!queue.isEmpty()) {
         VertexCity city = queue.poll();
         int energyLeft = energy - visited.get(city);
+
+        // If the energy left is less than 0, continue to the next city
         if (energyLeft < 0) continue;
 
+        // For all the roads from the city, update the energy of the next city
         for (EdgeRoad road : city.getRoads()) {
           VertexCity nextCity = road.getCityB();
+
+          // The energy should be updated if the next city is not visited 
+          // and the road distance is less than or equal to the energy
           if ((!visited.containsKey(nextCity) && road.getDistance() <= energy)) {
             visited.put(nextCity, energy);
             queue.add(nextCity);
@@ -333,170 +381,82 @@ public class WarungIkanMagetanMap {
         }
       }
       
+      // If the total cities that Sofita can possibly go to within the range of energy is 0, return -1
       if (result == 0) return -1;
-      return result;
+      
+      // Update RMemo with the total cities that Sofita can possibly go to within the range of energy
+      RMemo[energy] = result;
+      return result; // It should return the total cities that Sofita can possibly go to within the range of energy
     }
 
-  //   public int energyRangeBoundedwBFS(VertexCity start, int energy) {
-  //     int maxEdgeWeight = 100; // Maximum possible edge weight
-  //     int n = cities.size(); // Total number of cities
-  
-  //     // Adjust array sizes to accommodate IDs starting from 1
-  //     int[] distances = new int[n + 1]; // IDs range from 1 to N
-  //     Arrays.fill(distances, Integer.MAX_VALUE);
-  //     distances[start.id] = 0; // Use start.id directly
-  
-  //     // Buckets for Dial's algorithm
-  //     @SuppressWarnings("unchecked")
-  //     LinkedList<VertexCity>[] buckets = new LinkedList[maxEdgeWeight * n + 1];
-  //     for (int i = 0; i < buckets.length; i++) {
-  //         buckets[i] = new LinkedList<>();
-  //     }
-  //     buckets[0].add(start);
-  
-  //     int idx = 0; // Current index in buckets
-  //     int maxDistance = maxEdgeWeight * n; // Maximum possible cumulative distance
-  
-  //     while (idx <= maxDistance) {
-  //         while (!buckets[idx].isEmpty()) {
-  //             VertexCity city = buckets[idx].poll();
-  
-  //             if (distances[city.id] < idx) {
-  //                 continue;
-  //             }
-  
-  //             for (EdgeRoad road : city.getRoads()) {
-  //                 VertexCity nextCity = road.getCityB();
-  //                 int weight = road.getDistance();
-  
-  //                 // Edge weight must not exceed energy limit
-  //                 if (weight > energy) {
-  //                     continue;
-  //                 }
-  
-  //                 int newDist = distances[city.id] + weight;
-  
-  //                 if (newDist < distances[nextCity.id]) {
-  //                     distances[nextCity.id] = newDist;
-  //                     int bucketIdx = newDist;
-  //                     buckets[bucketIdx].add(nextCity);
-  //                 }
-  //             }
-  //         }
-  //         idx++;
-  //     }
-  
-  //     // Count reachable cities excluding the starting city
-  //     int count = 0;
-  //     for (int i = 1; i <= n; i++) {
-  //         if (i != start.id && distances[i] != Integer.MAX_VALUE) {
-  //             count++;
-  //         }
-  //     }
-  
-  //     return count == 0 ? -1 : count;
-  // }
-
-    // public int energyRangeBoundedwBFS(VertexCity start, int energy) {
-    //   final Map<VertexCity, Double> visited = new HashMap<>();
-    //   final FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
-    //   final Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
-    //   int result = 0;
-  
-    //   FibonacciHeap.Entry<VertexCity> startEntry = heap.insert(start, -energy);
-    //   entries.put(start, startEntry);
-    //   visited.put(start, (double) energy);
-  
-    //   while (!heap.isEmpty()) {
-    //     FibonacciHeap.Entry<VertexCity> currentEntry = heap.deleteMin();
-    //     VertexCity city = currentEntry.getValue();
-    //     int energyLeft = energy;
-  
-    //     for (EdgeRoad road : city.getRoads()) {
-    //       VertexCity nextCity = road.getCityB();
-    //       double newEnergyLeft = energyLeft - road.getDistance();
-  
-    //       if (newEnergyLeft >= 0 && (!visited.containsKey(nextCity) || newEnergyLeft > visited.get(nextCity))) {
-    //         visited.put(nextCity, newEnergyLeft);
-    //         if (entries.containsKey(nextCity)) {
-    //           heap.decreaseKey(entries.get(nextCity), -newEnergyLeft);
-    //         } else {
-    //           FibonacciHeap.Entry<VertexCity> entry = heap.insert(nextCity, -newEnergyLeft);
-    //           entries.put(nextCity, entry);
-    //           result++;
-    //         }
-    //       }
-    //     }
-    //   }
-  
-    //   return result == 0 ? -1 : result;
-    // }
-    
-    // public long dijkstra(VertexCity start, VertexCity end) {
-    //   FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
-    //   Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
-    //   for (VertexCity city : cities) {
-    //     city.setDistance(Long.MAX_VALUE);
-    //   }
-    //   start.setDistance(0);
-    //   entries.put(start, heap.insert(start, 0));
-
-    //   while (!heap.isEmpty()) {
-    //     VertexCity city = heap.deleteMin().getValue();
-    //     for (EdgeRoad road : city.getRoads()) {
-    //       VertexCity nextCity = road.getCityB();
-    //       long newDistance = city.getDistance() + road.getDistance();
-    //       if (newDistance < nextCity.getDistance()) {
-    //         nextCity.setDistance(newDistance);
-    //         if (entries.containsKey(nextCity)) {
-    //           heap.decreaseKey(entries.get(nextCity), newDistance);
-    //         } else {
-    //           entries.put(nextCity, heap.insert(nextCity, newDistance));
-    //         }
-    //       }
-    //     }
-    //   }
-
-    //   return end.getDistance();
-    // }
-
+    // This method is already done (properly implemented and working)
+    /**
+     * Dijkstra's Algorithm using Fibonacci Heap. This method is used to find the shortest path from a starting city,
+     * which is Sofita, to an ending city. The algorithm is modified to start from a specific vertex 
+     * and return the total weight of the ending city. The algorithm is also modified to store the shortest distances
+     * from the starting city to all other cities in the FMemo array.
+     * @param start VertexCity
+     * @param end VertexCity
+     * @return result of the shortest path from start city to end city: long
+     */
     public long dijkstra(VertexCity start, VertexCity end) {
+
+      // If the distance from the starting city to the ending city is already calculated, return the distance
+      if (FMemo[end.getId()] != 0 && prevSofita == start) return FMemo[end.getId()];
+
+      // Else if the distance from the starting city to the ending city is already calculated but the starting city is different
+      else if (FMemo[end.getId()] != 0 && prevSofita != start) {
+        Arrays.fill(FMemo, 0);
+        prevSofita = start;
+      }
+
+      // Initialise the Fibonacci Heap, entries map, and set all the distances to the maximum value
       FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
       Map<VertexCity, FibonacciHeap.Entry<VertexCity>> entries = new HashMap<>();
-      Map<VertexCity, Long> distances = new HashMap<>();
-    
-      // Initialize distance to the start city as 0
-      distances.put(start, 0L);
+      for (VertexCity city : cities) {
+        city.setDistance(Long.MAX_VALUE);
+      }
+
+      // Set the distance of the starting city to 0 and insert the starting city into the Fibonacci Heap
+      start.setDistance(0);
       entries.put(start, heap.insert(start, 0));
-    
+
+      // While the Fibonacci Heap is not empty, delete and extract the city and its minimum distance
       while (!heap.isEmpty()) {
         VertexCity city = heap.deleteMin().getValue();
-        long currentDistance = distances.get(city);
-    
-        // If we have reached the destination, we can break early
-        if (city.equals(end)) {
-          break;
-        }
-    
+
+        // For all the roads from the city, update the distance of the next city 
+        // if the new distance is less than the current distance
         for (EdgeRoad road : city.getRoads()) {
           VertexCity nextCity = road.getCityB();
-          long newDistance = currentDistance + road.getDistance();
-          long existingDistance = distances.getOrDefault(nextCity, Long.MAX_VALUE);
-    
-          if (newDistance < existingDistance) {
-            distances.put(nextCity, newDistance);
-    
+          long newDistance = city.getDistance() + road.getDistance();
+
+          // If the new distance is less than the current distance, update the distance of the next city
+          if (newDistance < nextCity.getDistance()) {
+            nextCity.setDistance(newDistance);
+
+            // If the next city is already in the Fibonacci Heap, 
+            // decrease the key (distance) of the city in the heap
+            // the decreaseKey method is used to decrease the key of the city in the Fibonacci Heap
+            // without removing the city from the heap, modifying the distance, and reinserting the city
             if (entries.containsKey(nextCity)) {
               heap.decreaseKey(entries.get(nextCity), newDistance);
-            } else {
+            } 
+            
+            // If the next city is not in the Fibonacci Heap, insert the city into the heap
+            else {
               entries.put(nextCity, heap.insert(nextCity, newDistance));
             }
           }
         }
       }
-    
-      // Return the shortest distance to the end city
-      return distances.getOrDefault(end, -1L);
+
+      // Update FMemo with all shortest distances from start city
+      for (VertexCity city : cities) {
+        FMemo[city.getId()] = city.getDistance();
+      }
+
+      return end.getDistance(); // It should return the shortest path from start city to end city
     }
 
     // This method is already done (properly implemented and working)
@@ -504,22 +464,26 @@ public class WarungIkanMagetanMap {
      * Modified Prim's Algorithm using Fibonacci Heap. This method is used to find the minimum spanning tree
      * of the graph. The algorithm is modified to start from a specific vertex and return the total weight of the
      * minimum spanning tree while also including all the graphs from the starting vertex.
-     * @param start
+     * @param start VertexCity
      * @return result of modified (all edges from the starting vertex included) minimum spanning tree: long
      */
     public long modifiedPrimMST(VertexCity start) {
       long result = 0;
 
+      // Initialise the Fibonacci Heap, visited array, and map to store Fibonacci Heap entries
       FibonacciHeap<VertexCity> heap = new FibonacciHeap<>();
       boolean[] visited = new boolean[cities.size()+1];
       visited[start.getId()] = true;
       Map<VertexCity, FibonacciHeap.Entry<VertexCity>> map = new HashMap<>();
 
+      // Add all the roads from the starting to the result and
+      // mark the cities as visited
       for (EdgeRoad road : start.getRoads()) {
         result += road.getDistance();
         visited[road.getCityB().getId()] = true;
       }
 
+      // Add all the roads from the starting city to the Fibonacci Heap
       for (int i = 1; i <= cities.size(); i++) {
         if (visited[i]) {
           for (EdgeRoad road : cities.get(i-1).getRoads()) {
@@ -530,20 +494,33 @@ public class WarungIkanMagetanMap {
         }
       }
 
+      // While the Fibonacci Heap is not empty, delete and extract the city and its minimum distance
       while (!heap.isEmpty()) {
         FibonacciHeap.Entry<VertexCity> temp = heap.deleteMin();
         VertexCity city = temp.getValue();
         double distance = temp.getPriority();
+
+        // The city needs to be not visited to be added to the result
         if (!visited[city.getId()]) {
           visited[city.getId()] = true;
           result += distance;
           
+          // Add all the roads from the city to the Fibonacci Heap
           for (EdgeRoad road : city.getRoads()) {
+            // The city destination from (X) EdgeRoad should not be visited
             if (!visited[road.getCityB().getId()]) {
               long newDistance = road.getDistance();
+
+              // If the city is already in the Fibonacci Heap and the new distance is less than the current distance
+              // so decrease the key (distance) of the city in the heap
+              // the decreaseKey method is used to decrease the key of the city in the Fibonacci Heap
+              // without removing the city from the heap, modifying the distance, and reinserting the city
               if (map.containsKey(road.getCityB()) && newDistance < map.get(road.getCityB()).getPriority()) {
                 heap.decreaseKey(map.get(road.getCityB()), newDistance);
-              } else {
+              } 
+              
+              // If the city is not in the Fibonacci Heap, insert the city into the heap
+              else {
                 map.put(road.getCityB(), heap.insert(road.getCityB(), newDistance));
               }
             }
@@ -551,12 +528,9 @@ public class WarungIkanMagetanMap {
         }
       }
 
-      return result;
+      return result; // It should return the total weight of the minimum spanning tree while including all the roads from the starting city
     }
 
-    /**
-     * TODO: Fix the possible infinite loops and recursions at addition, deletion, and merging of the heap
-     */
     static class FibonacciHeap<T> {
       private Entry<T> min = null;
       private int size = 0;
