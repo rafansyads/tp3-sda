@@ -17,16 +17,18 @@ import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 
 public class WarungIkanMagetanMap {
+  private static final int[] MMemo = new int[10000];
   private static final InputReader in = new InputReader(System.in);
   private static final PrintWriter out = new PrintWriter(System.out);
   private static GraphMap graphMap;
   private static int totalCities; // might change
   private static int totalRoads; // might change
   private static int totalPass; // might change
-  private static int[] passCities;
   private static int currPass;
+  private static int prevPass;
   private static int maxRoadDist = 0;
   private static int[] RMemo;
+  private static int[] passCities;
   private static long[] FMemo;
   private static VertexCity prevSofita;
 
@@ -44,6 +46,7 @@ public class WarungIkanMagetanMap {
     RMemo = new int[101]; // 1 to 100 energy
     FMemo = new long[totalCities + 1]; // 1 to totalCities
     RMemo[100] = totalCities - 1;
+    Arrays.fill(MMemo, -1);
 
     // Construct the cities / vertices
     graphMap = new GraphMap(totalCities);
@@ -68,6 +71,7 @@ public class WarungIkanMagetanMap {
       passCities[i] = in.nextInteger();
     }
     currPass = 0;
+    prevPass = 0;
 
     // Input the activities queries
     int totalQueries = in.nextInteger();
@@ -76,7 +80,7 @@ public class WarungIkanMagetanMap {
       switch (query) {
         case 'R':
           /* 
-           * TODO: Sofita can probabily go to cities within the range of Energy entried
+           * Sofita can probabily go to cities within the range of Energy entried
            * if a particular city is within the range, she can go to that particular city with the energy refilled when arrived
            * if she can arrive at a particular city, she can refill her energy to the maximum (query entried) and possibly go to another city
            * if a particular city is not within the range, she won't go to that city
@@ -87,14 +91,14 @@ public class WarungIkanMagetanMap {
           break;
           case 'F':
           /*
-          * TODO: Sofita can go to the city with the entried id
+          * Sofita can go to the city with the entried id
           * returns the minimum distance to the destination city
           */
           out.println(methodF(in.nextInteger()));
           break;
           case 'M':
           /*
-          * Sofita will go to the city with the entried id and solve the password
+          * TODO: Sofita will go to the city with the entried id and solve the password
           * if the password is solved, Sofita will go to the entried city
           * returns the minimum combinations of passCities that Sofita has solved
           * else returns -1
@@ -103,7 +107,7 @@ public class WarungIkanMagetanMap {
           break;
           case 'J':
           /*
-          * TODO: Sofita will go to the city with the entried id and start connect all the cities with the minimum total distance
+          * Sofita will go to the city with the entried id and start connect all the cities with the minimum total distance
           * returns the minimum total distance to connect all the cities
           */
           out.println(methodJ(in.nextInteger()));
@@ -118,11 +122,24 @@ public class WarungIkanMagetanMap {
     out.close();
   }
 
+  /**
+   * Method R: Energy Range Bounded with BFS | All Edges from the Starting Vertex Included
+   * >> For more information, check WarungIkanMagetanMap$GraphMap#energyRangeBoundedwBFS method
+   * @param energy
+   * @return the total cities that Sofita can possibly go to within the range of energy: int
+   */
   public static int methodR(int energy) {
     return graphMap.energyRangeBoundedwBFS(graphMap.getSofita(), energy);
     // return 0;
   }
 
+  /**
+   * Method F: Dijkstra's Algorithm
+   * >> For more information, check WarungIkanMagetanMap$GraphMap#dijkstra method
+   * @param cityId
+   * @return the result of the shortest path from start city to end city: long
+   * 
+   */
   public static long methodF(int cityId) {
     VertexCity sofita = graphMap.getSofita();
     VertexCity city = graphMap.cities.get(cityId - 1);
@@ -139,62 +156,52 @@ public class WarungIkanMagetanMap {
    * Method J: Modified Prim's Algorithm | Minimum Spanning Tree
    * >> For more information, check WarungIkanMagetanMap$GraphMap#modifiedPrimMST method
    * @param cityId
-   * @return
+   * @return the result of the minimum spanning tree: long
    */
   public static long methodJ(int cityId) {
     return graphMap.modifiedPrimMST(graphMap.cities.get(cityId - 1));
   }
 
-  private static int combineNumbers(int num1, int num2) {
-      int[] digits1 = new int[4];
-      int[] digits2 = new int[4];
-      int[] result = new int[4];
-      
-      for (int i = 3; i >= 0; i--) {
-          digits1[i] = num1 % 10;
-          digits2[i] = num2 % 10;
-          num1 /= 10;
-          num2 /= 10;
+  public static int findMinSteps(int curr, int target) {
+    if (target == 10000) target = 0;
+    if (curr == target) return 0;
+    Arrays.fill(MMemo, -1);
+    prevPass = curr;
+    MMemo[curr] = 0;
+
+    Queue<Integer> queue = new LinkedList<>();
+    queue.add(curr);
+
+    while (!queue.isEmpty()) {
+      int pass = queue.poll();
+      int steps = MMemo[pass];
+
+      for (int i = 0; i < passCities.length; i++) {
+        int next = addPass(pass, passCities[i]);
+
+        if (MMemo[next] == -1) {
+          MMemo[next] = steps + 1;
+
+          if (next == target) {
+            currPass = target;
+            return MMemo[next];
+          }
+          queue.add(next);
+        }
       }
-      
-      for (int i = 0; i < 4; i++) {
-          result[i] = (digits1[i] + digits2[i]) % 10;
-      }
-      
-      int finalResult = 0;
-      for (int i = 0; i < 4; i++) {
-          finalResult = finalResult * 10 + result[i];
-      }
-      
-      return finalResult;
+    }
+
+    return -1;
   }
 
-  public static int findMinSteps(int currentPassword, int targetPassword) {
-      if (currentPassword == targetPassword) return 0;
-      Set<Integer> visited = new HashSet<>();
-      Queue<int[]> queue = new LinkedList<>();
-      queue.add(new int[]{currentPassword, 0});
-      visited.add(currentPassword);
-      
-      while (!queue.isEmpty()) {
-          int[] current = queue.poll();
-          int password = current[0];
-          int steps = current[1];
-          
-          if (password == targetPassword) {
-            currPass = targetPassword;
-            return steps;
-          }
-
-          for (int i = 0; i < passCities.length; i++) {
-              int newPassword2 = combineNumbers(password, passCities[i]);
-              if (!visited.contains(newPassword2)) {
-                  visited.add(newPassword2);
-                  queue.add(new int[]{newPassword2, steps + 1});
-              }
-          }
-      }
-      return -1;
+  private static int addPass(int pass1, int pass2) {
+    int result = 0;
+    for (int i = 0, mul = 1; i < 4; i++, mul *= 10) {
+      int digit1 = (pass1 / mul) % 10;
+      int digit2 = (pass2 / mul) % 10;
+      result += ((digit1 + digit2) % 10) * mul;
+    }
+    return result;
   }
 
   static class EdgeRoad implements Comparable<EdgeRoad> {
